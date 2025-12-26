@@ -1,0 +1,30 @@
+{
+  "component_name": "JohnCommitHeatmap",
+  "last_refreshed_date": "2025-12-25",
+  "year": 2025,
+  "raw_data": [
+    {
+      "day": 0,
+      "hour": 7,
+      "commits": 2
+    },
+    {
+      "day": 0,
+      "hour": 8,
+      "commits": 3
+    },
+    {
+      "day": 1,
+      "hour": 10,
+      "commits": 5
+    }
+  ],
+  "daily_commits": {
+    "2025-01-20": 2,
+    "2025-01-21": 1,
+    "2025-02-14": 5
+  },
+  "user_full_name": "John Doe",
+  "user_first_name": "John",
+  "repo_name": "mobile-app"
+}

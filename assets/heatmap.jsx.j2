@@ -1,0 +1,411 @@
+import React from 'react';
+
+const [[ component_name ]] = () => {
+  const [copied, setCopied] = React.useState(false);
+
+  // AUTO-GENERATED DATA - Last refreshed: [[ last_refreshed_date ]]
+  const rawData = [[ raw_data | tojson ]];
+
+  const dailyCommits[[ year ]] = [[ daily_commits | tojson ]];
+
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const hours = Array.from({length: 24}, (_, i) => i);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  const dataMap = new Map();
+  rawData.forEach(d => dataMap.set(`${d.day}-${d.hour}`, d.commits));
+
+  const maxCommits = Math.max(...rawData.map(d => d.commits));
+  const maxDailyCommits = Math.max(...Object.values(dailyCommits[[ year ]]));
+  
+  const dayTotals = fullDays.map((_, dayIdx) => 
+    rawData.filter(d => d.day === dayIdx).reduce((sum, d) => sum + d.commits, 0)
+  );
+  
+  const hourTotals = hours.map(hour => 
+    rawData.filter(d => d.hour === hour).reduce((sum, d) => sum + d.commits, 0)
+  );
+
+  const totalCommits = rawData.reduce((sum, d) => sum + d.commits, 0);
+  const totalCommits[[ year ]] = Object.values(dailyCommits[[ year ]]).reduce((a, b) => a + b, 0);
+  const activeDays[[ year ]] = Object.keys(dailyCommits[[ year ]]).length;
+
+  const formatHour = (h) => h === 0 ? '12am' : h === 12 ? '12pm' : h < 12 ? `${h}am` : `${h-12}pm`;
+
+  // Generate Slack Block Kit JSON dynamically from the data
+  const generateSlackBlockKit = () => {
+    const maxBar = 20;
+    const maxDayTotal = Math.max(...dayTotals);
+    const maxHourTotal = Math.max(...hourTotals);
+
+    // Generate bar chart for days
+    const daysSorted = fullDays
+      .map((day, i) => ({ day, total: dayTotals[i] }))
+      .sort((a, b) => b.total - a.total);
+    
+    const daysChart = daysSorted.map(({ day, total }, i) => {
+      const barLen = Math.round((total / maxDayTotal) * maxBar);
+      const bar = '█'.repeat(barLen) + '░'.repeat(maxBar - barLen);
+      return `${i + 1}. ${day.padEnd(12)} ${String(total).padStart(3)} commits  ${bar}`;
+    }).join('\n');
+
+    // Generate bar chart for peak hours
+    const hoursSorted = hours
+      .map(h => ({ hour: h, total: hourTotals[h] }))
+      .filter(h => h.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+    
+    const hoursChart = hoursSorted.map(({ hour, total }, i) => {
+      const barLen = Math.round((total / maxHourTotal) * maxBar);
+      const bar = '█'.repeat(barLen) + '░'.repeat(maxBar - barLen);
+      return `${i + 1}. ${formatHour(hour).padEnd(5)} ${String(total).padStart(3)} commits  ${bar}`;
+    }).join('\n');
+
+    // Generate ASCII heatmap
+    const heatChars = ['·', '▁', '▂', '▃', '▅', '▆', '█'];
+    const getHeatChar = (commits) => {
+      if (commits === 0) return '·';
+      const idx = Math.min(Math.ceil((commits / maxCommits) * 6), 6);
+      return heatChars[idx];
+    };
+
+    const heatmapRows = days.map((day, dayIdx) => {
+      let row = day.padEnd(4);
+      for (let h = 0; h < 24; h += 3) {
+        const chunk = [0, 1, 2].map(offset => {
+          const commits = dataMap.get(`${dayIdx}-${h + offset}`) || 0;
+          return getHeatChar(commits);
+        }).join('');
+        row += ` ${chunk}`;
+      }
+      return row;
+    }).join('\n');
+
+    const heatmap = `       12a  3a  6a  9a  12p  3p  6p  9p\n${heatmapRows}`;
+
+    // Find best streak
+    const sortedDates = Object.keys(dailyCommits[[ year ]]).sort();
+    let bestStreak = { start: '', end: '', days: 0, commits: 0 };
+    let currentStreak = { start: '', days: 0, commits: 0 };
+    
+    sortedDates.forEach((date, i) => {
+      const prevDate = sortedDates[i - 1];
+      const isConsecutive = prevDate && 
+        (new Date(date) - new Date(prevDate)) === 86400000;
+      
+      if (isConsecutive) {
+        currentStreak.days++;
+        currentStreak.commits += dailyCommits[[ year ]][date];
+      } else {
+        currentStreak = { start: date, days: 1, commits: dailyCommits[[ year ]][date] };
+      }
+      
+      if (currentStreak.commits > bestStreak.commits) {
+        bestStreak = { ...currentStreak, end: date };
+      }
+    });
+
+    const formatDateShort = (d) => {
+      const date = new Date(d);
+      return `${months[date.getMonth()]} ${date.getDate()}`;
+    };
+
+    const bestStreakStr = bestStreak.start ? 
+      `${formatDateShort(bestStreak.start)}-${new Date(bestStreak.end).getDate()}` : 'N/A';
+    const topDay = daysSorted[0];
+    const avgPerDay = (totalCommits[[ year ]] / activeDays[[ year ]]).toFixed(1);
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    return {
+      blocks: [
+        { type: "header", text: { type: "plain_text", text: "Developer Spotlight: [[ user_full_name ]]", emoji: true }},
+        { type: "context", elements: [{ type: "mrkdwn", text: `:bar_chart: *[[ repo_name ]]* repository analysis | Generated ${today}` }]},
+        { type: "divider" },
+        { type: "section", text: { type: "mrkdwn", text: "*:calendar: [[ year ]] Contribution Summary*" }},
+        { type: "section", fields: [
+          { type: "mrkdwn", text: `*Total Commits*\n\`${totalCommits[[ year ]]}\`` },
+          { type: "mrkdwn", text: `*Active Days*\n\`${activeDays[[ year ]]}\`` },
+          { type: "mrkdwn", text: `*Avg/Active Day*\n\`${avgPerDay}\`` },
+          { type: "mrkdwn", text: `*Best Day*\n\`${maxDailyCommits} commits\`` }
+        ]},
+        { type: "divider" },
+        { type: "section", text: { type: "mrkdwn", text: `*:fire: Peak Performance Days*\n\`\`\`\n${daysChart}\n\`\`\`` }},
+        { type: "section", text: { type: "mrkdwn", text: `*:clock3: Peak Coding Hours*\n\`\`\`\n${hoursChart}\n\`\`\`` }},
+        { type: "divider" },
+        { type: "section", text: { type: "mrkdwn", text: `*:chart_with_upwards_trend: Day × Hour Heatmap*\n\`\`\`\n${heatmap}\n\`\`\`` }},
+        { type: "divider" },
+        { type: "section", text: { type: "mrkdwn", text: "*:bulb: Fun Insights*" }},
+        { type: "section", text: { type: "mrkdwn", text: [
+          `:point_right: *Midweek Warrior* - ${topDay.day} is [[ user_first_name ]]'s power day with ${topDay.total} commits!`,
+          `:point_right: *Lunch Rush* - Most commits happen around ${formatHour(hoursSorted[0].hour)} (wrapping up morning work?)`,
+          `:point_right: *Weekend Mode* - Only ${dayTotals[6]} Saturday commits all year. Work-life balance!`,
+          `:point_right: *Night Owl?* Nope! Activity drops sharply after 10pm`,
+          `:point_right: *Hot Streak* - ${bestStreakStr} was on fire with ${bestStreak.commits} commits in ${bestStreak.days} days`
+        ].join('\n') }},
+        { type: "context", elements: [{ type: "mrkdwn", text: ":robot_face: Generated via `mergestat` analysis of git commits" }]}
+      ]
+    };
+  };
+
+  const slackBlockKit = generateSlackBlockKit();
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(slackBlockKit, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const generateCalendarWeeks = () => {
+    const weeks = [];
+    const startDate = new Date('[[ year ]]-01-01');
+    const endDate = new Date('[[ year ]]-12-31');
+    const firstDay = new Date(startDate);
+    firstDay.setDate(firstDay.getDate() - firstDay.getDay());
+    
+    let currentDate = new Date(firstDay);
+    let currentWeek = [];
+    
+    while (currentDate <= endDate || currentWeek.length > 0) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const isIn[[ year ]] = currentDate.getFullYear() === [[ year ]];
+      
+      currentWeek.push({
+        date: dateStr,
+        commits: isIn[[ year ]] ? (dailyCommits[[ year ]][dateStr] || 0) : -1,
+        month: currentDate.getMonth()
+      });
+      
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+      if (currentDate > endDate && currentWeek.length === 0) break;
+    }
+    return weeks;
+  };
+
+  const calendarWeeks = generateCalendarWeeks();
+
+  const getColor = (commits) => {
+    if (commits === 0) return '#1a1a2e';
+    const intensity = commits / maxCommits;
+    return `rgb(${Math.round(20 + intensity * 20)}, ${Math.round(60 + intensity * 195)}, ${Math.round(40 + intensity * 60)})`;
+  };
+
+  const getCalendarColor = (commits) => {
+    if (commits === -1) return 'transparent';
+    if (commits === 0) return '#161b22';
+    const intensity = Math.min(commits / 6, 1);
+    if (intensity <= 0.25) return '#0e4429';
+    if (intensity <= 0.5) return '#006d32';
+    if (intensity <= 0.75) return '#26a641';
+    return '#39d353';
+  };
+
+  const getMonthLabels = () => {
+    const labels = [];
+    let lastMonth = -1;
+    calendarWeeks.forEach((week, weekIdx) => {
+      const firstDay = week.find(d => d.commits !== -1 && d.date);
+      if (firstDay && firstDay.month !== lastMonth) {
+        labels.push({ month: firstDay.month, weekIdx });
+        lastMonth = firstDay.month;
+      }
+    });
+    return labels;
+  };
+
+  const monthLabels = getMonthLabels();
+  const cellSize = 11, cellGap = 3;
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2 text-center">[[ user_full_name ]] - Commit Activity</h1>
+        <p className="text-gray-400 text-center mb-4">Repository: [[ repo_name ]] | Total Commits (all time): {totalCommits}</p>
+        
+        {/* Share on Slack Button */}
+        <div className="flex flex-col items-center mb-8">
+          <button
+            onClick={copyToClipboard}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all ${
+              copied 
+                ? 'bg-green-600 text-white' 
+                : 'bg-[#4A154B] hover:bg-[#611f69] text-white'
+            }`}
+          >
+            {copied ? (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Copied to Clipboard!
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+                </svg>
+                Share on Slack
+              </>
+            )}
+          </button>
+          {copied && (
+            <div className="mt-3 p-3 bg-gray-800 rounded-lg text-sm text-gray-300 text-center">
+              <p className="mb-2">Now paste it in the Block Kit Builder:</p>
+              <a 
+                href="https://app.slack.com/block-kit-builder/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                app.slack.com/block-kit-builder
+              </a>
+              <p className="mt-2 text-gray-400">Then click <span className="text-white font-semibold">"Send to Slack"</span></p>
+            </div>
+          )}
+        </div>
+
+        {/* GitHub Calendar */}
+        <div className="bg-gray-800 rounded-xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">{totalCommits[[ year ]]} contributions in [[ year ]]</h2>
+            <span className="text-gray-400 text-sm">{activeDays[[ year ]]} active days</span>
+          </div>
+          <div className="overflow-x-auto">
+            <div className="inline-block">
+              <div className="flex mb-2" style={{ marginLeft: '32px' }}>
+                {monthLabels.map(({ month, weekIdx }) => (
+                  <span key={month} className="text-xs text-gray-400" style={{ position: 'relative', left: `${weekIdx * (cellSize + cellGap)}px`, marginRight: '-20px' }}>
+                    {months[month]}
+                  </span>
+                ))}
+              </div>
+              <div className="flex">
+                <div className="flex flex-col mr-2" style={{ gap: `${cellGap}px` }}>
+                  {days.map((day, i) => (
+                    <div key={day} className="text-xs text-gray-400 flex items-center justify-end" style={{ height: `${cellSize}px`, width: '24px' }}>
+                      {i % 2 === 1 ? day : ''}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex" style={{ gap: `${cellGap}px` }}>
+                  {calendarWeeks.map((week, weekIdx) => (
+                    <div key={weekIdx} className="flex flex-col" style={{ gap: `${cellGap}px` }}>
+                      {week.map((day, dayIdx) => (
+                        <div
+                          key={`${weekIdx}-${dayIdx}`}
+                          className="rounded-sm cursor-pointer hover:ring-1 hover:ring-gray-500"
+                          style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: getCalendarColor(day.commits) }}
+                          title={day.date ? `${day.date}: ${day.commits} commits` : ''}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-end mt-4 gap-1">
+                <span className="text-xs text-gray-400 mr-2">Less</span>
+                {['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'].map((color, i) => (
+                  <div key={i} className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: color }} />
+                ))}
+                <span className="text-xs text-gray-400 ml-2">More</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Day x Hour Heatmap */}
+        <div className="bg-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Day x Hour Heatmap (All Time)</h2>
+          <div className="overflow-x-auto">
+            <svg width={90 + hours.length * 28 + 50} height={60 + days.length * 28 + 20}>
+              {hours.map((hour) => (
+                <text key={hour} x={90 + hour * 28 + 14} y={45} textAnchor="middle" className="fill-gray-400" fontSize="10">
+                  {hour % 3 === 0 ? formatHour(hour) : ''}
+                </text>
+              ))}
+              {days.map((day, dayIdx) => (
+                <g key={day}>
+                  <text x={80} y={60 + dayIdx * 28 + 18} textAnchor="end" className="fill-gray-300" fontSize="12">{day}</text>
+                  {hours.map((hour) => {
+                    const commits = dataMap.get(`${dayIdx}-${hour}`) || 0;
+                    return (
+                      <g key={`${dayIdx}-${hour}`}>
+                        <rect x={90 + hour * 28} y={60 + dayIdx * 28} width={26} height={26} fill={getColor(commits)} rx="4" className="cursor-pointer hover:stroke-white hover:stroke-1" />
+                        {commits > 0 && <text x={90 + hour * 28 + 13} y={60 + dayIdx * 28 + 17} textAnchor="middle" fontSize="9" className={commits > maxCommits * 0.5 ? 'fill-gray-900' : 'fill-gray-300'}>{commits}</text>}
+                      </g>
+                    );
+                  })}
+                  <text x={90 + hours.length * 28 + 8} y={60 + dayIdx * 28 + 18} className="fill-gray-400" fontSize="11">{dayTotals[dayIdx]}</text>
+                </g>
+              ))}
+            </svg>
+          </div>
+          <div className="flex justify-center items-center gap-2 mt-4">
+            <span className="text-gray-400 text-sm">Less</span>
+            {[0, 0.25, 0.5, 0.75, 1].map((intensity, i) => (
+              <div key={i} className="w-6 h-6 rounded" style={{ backgroundColor: getColor(intensity * maxCommits) }} />
+            ))}
+            <span className="text-gray-400 text-sm">More</span>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-gray-800 rounded-xl p-5">
+            <h3 className="text-lg font-semibold mb-3 text-green-400">Most Active Days</h3>
+            <div className="space-y-2">
+              {fullDays.map((day, i) => ({ day, total: dayTotals[i] })).sort((a, b) => b.total - a.total).slice(0, 5).map(({ day, total }, rank) => (
+                <div key={day} className="flex justify-between"><span className="text-gray-300">{rank + 1}. {day}</span><span className="text-green-400 font-mono">{total}</span></div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-gray-800 rounded-xl p-5">
+            <h3 className="text-lg font-semibold mb-3 text-blue-400">Peak Hours</h3>
+            <div className="space-y-2">
+              {hours.map(h => ({ hour: h, total: hourTotals[h] })).filter(h => h.total > 0).sort((a, b) => b.total - a.total).slice(0, 5).map(({ hour, total }, rank) => (
+                <div key={hour} className="flex justify-between"><span className="text-gray-300">{rank + 1}. {formatHour(hour)}</span><span className="text-blue-400 font-mono">{total}</span></div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-gray-800 rounded-xl p-5">
+            <h3 className="text-lg font-semibold mb-3 text-purple-400">[[ year ]] Highlights</h3>
+            <div className="space-y-2 text-sm text-gray-300">
+              <div className="flex justify-between"><span>Total commits</span><span className="text-white font-semibold">{totalCommits[[ year ]]}</span></div>
+              <div className="flex justify-between"><span>Active days</span><span className="text-white font-semibold">{activeDays[[ year ]]}</span></div>
+              <div className="flex justify-between"><span>Avg per active day</span><span className="text-white font-semibold">{(totalCommits[[ year ]] / activeDays[[ year ]]).toFixed(1)}</span></div>
+              <div className="flex justify-between"><span>Best single day</span><span className="text-white font-semibold">{maxDailyCommits} commits</span></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Hourly Distribution */}
+        <div className="bg-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-semibold mb-4 text-center">Hourly Distribution</h3>
+          <div className="flex items-end justify-center gap-1 h-32">
+            {hours.map(hour => {
+              const total = hourTotals[hour];
+              const height = total > 0 ? (total / Math.max(...hourTotals)) * 100 : 0;
+              return (
+                <div key={hour} className="flex flex-col items-center">
+                  <div className="w-4 bg-green-500 rounded-t hover:bg-green-400" style={{ height: `${height}%`, minHeight: total > 0 ? '4px' : '0' }} title={`${formatHour(hour)}: ${total}`} />
+                  <span className="text-xs text-gray-500 mt-1">{hour % 4 === 0 ? hour : ''}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default [[ component_name ]];

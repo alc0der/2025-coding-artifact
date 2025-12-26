@@ -1,0 +1,12 @@
+version: '3'
+
+tasks:
+  validate:
+    desc: Validate the skill using skills-ref
+    cmds:
+      - skills-ref validate .
+
+  build:
+    desc: Zip the skill for deployment
+    cmds:
+      - zip -r 2025-coding-artifact.skill SKILL.md assets scripts
