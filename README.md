@@ -1,7 +1,9 @@
-# 2025 Coding Artifact: Developer Commit Heatmap Skill
+# 2025 Coding Artifact
 
-An educative and fun project that teaches how Claude Desktop uses [Agent Skills](https://agentskills.io).
-The project delves into effecient use of agent skills scripts. This skill guides agents to query `mergestat`, format the data, and render a Jinja2 template via Python to produce a self-contained JSX artifact, which is a fun of coding stats that can be shared to Slack.
+An educative and fun project that aims at solidifying understanding of Claude Desktop uses especially around [Agent Skills](https://agentskills.io).
+The project delves into efficient use of agent skills scripts. The project demonstrates how
+to transfer data to Claude Desktop and how to create a determinstic JSX artifact. The project is also
+a fun activity that you could apply with your team to brag about coding stats during the year. See example below:
 
 ## Example below:
 
@@ -9,7 +11,7 @@ The project delves into effecient use of agent skills scripts. This skill guides
 
 <summary>Visual Artifact</summary>
 
-![Claude Artifact](artifact.png)
+![Claude Artifact](docs/artifact.png)
 
 </details>
 
@@ -17,55 +19,34 @@ The project delves into effecient use of agent skills scripts. This skill guides
 
 <summary>Slack Message</summary>
 
-![Slack Message](slack.png)
+![Slack Message](docs/slack.png)
 
 </details>
 
-## Features
+## The fun
 
--   **Interactive Heatmap**: Visualize commit activity by day of the week and hour.
--   **Contribution Graph**: View annual contributions in a grid format.
--   **Insights & Stats**: Automated highlights of developer contribution patterns.
--   **Slack Integration**: Generates Block Kit JSON for easy sharing of results on Slack.
+The AI will take you in an adventure of quests:
+- Quest 1: Install MCP
+- Quest 2: Add a skill
+- Quest 3: Give a repo
+- Quest 4: Configure a mapping
 
-## Philosophy
+## Architecture
 
-This project follows a **Data -> Template -> Artifact** workflow:
-1.  **Extract**: SQL queries against `mergestat` (via MCP) gather raw commit data.
-2.  **Transform**: Data is structured into a JSON format defined by the template schema.
-3.  **Render**: A Python script hydrates the Jinja2 template with the JSON data.
-4.  **Produce**: The final output is a standalone JSX file ready for use.
+Animated architecture:
 
-## Project Structure
+[Quest 1](./docs/architecture/quest1.svg) → [Quest 2](./docs/architecture/quest2.svg) → [Quest 3](./docs/architecture/quest3.svg) → [Quest 4](./docs/architecture/quest4.svg) → [Result](./docs/architecture/result.svg)
 
--   `assets/heatmap.jsx.j2`: Jinja2 template for the React component.
--   `scripts/render_heatmap.py`: Python script to render the template.
--   `SKILL.md`: Detailed documentation for the Claude Skill.
--   `2025-coding-artifact.skill`: Claude Skill definition.
+![Animated Architecture](./docs/animated.svg)
 
-## Getting Started
+## Install in your Org
 
-### Prerequisites
+1. Create a shared project in Claude Code
+1. Add [prompt.md](./src/prompt.md) to the project instructions
+1. (optional) Add skill as an org skill
+1. Ask team to start a thread with a hello then follow instructions
+1. Team posts results in a dedicated Slack channel
 
--   Python 3.x
--   `jinja2` Python package
--   [mergestat-mcp](https://github.com/alc0der/mergestat-mcp) (Required for data extraction)
+## More
 
-### Usage
-
-1.  **Prepare your data**: Create a JSON file (e.g., `data.json`) based on the structure in `assets/sample_data.json`.
-2.  **Render the heatmap**:
-
-    ```bash
-    # Read from a file
-    python3 scripts/render_heatmap.py data.json > MyHeatmap.jsx
-
-    # Or pipe from stdin
-    cat data.json | python3 scripts/render_heatmap.py > MyHeatmap.jsx
-    ```
-
-3.  **Use the artifact**: The resulting `MyHeatmap.jsx` is a self-contained React component.
-
-## More Information
-
-For more details on SQL queries and data schemas, please refer to [SKILL.md](SKILL.md).
+More thoughts on this in my blog

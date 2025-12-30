@@ -1,0 +1,77 @@
+steps: {
+  quest1: {
+    local: Claude Desktop {
+      mcp
+    }
+    local.mcp: {style.animated: true}
+    cloud: Claude Sandbox Container
+    cloud.shape: cloud
+    local <-> cloud
+  }
+  quest2: {
+    # reset
+    local.mcp: {style.animated: false}
+
+    # main
+    local: Claude Desktop {
+      mcp
+    }
+    cloud
+    cloud.shape: cloud
+    cloud: Claude Sandbox Container {
+      skill: Coding Artifact Skill { style.animated: true }
+    }
+  }
+  quest3: {
+    cloud.skill {style.animated: false}
+
+    user
+    user.shape: person
+    user -> local: repo path  {style.animated: true}
+
+    repo
+    repo.shape: cylinder
+    local.mcp -> repo: find unique authors {style.animated: true}
+  }
+  quest4: {
+    # reset
+    local <-> cloud: null
+    local.mcp -> repo: null
+    local.mcp -> repo
+
+
+    user -> local: null
+
+    user -> local: aliases map {style.animated: true}
+
+    local.file: commits.json
+    local.mcp -> local.file: write to file {style.animated: true}
+    cloud.file: commits.json
+    local.file -> cloud.file: Copy file to Claude / Manual upload {style.animated: true}
+  }
+  result: {
+    # reset
+    user -> local: null
+    user -> local
+    local.mcp -> local.file: null
+    local.mcp: null
+    local.file: null
+    local -> repo
+    local <-> cloud
+
+    cloud.file: |shell
+      /mnt/upload/commits.json
+    |
+    cloud.skill: {
+      skills: |shell
+        /mnt/skills/user/my-skill/template
+        /mnt/skills/user/my-skill/code_to_fill_template.py
+      |
+    }
+    cloud.artifacts: |shell
+        /home/claude/rendered_template.html
+      |
+    cloud.file -> cloud.skill: populate data in template {style.animated: true}
+    cloud.skill -> cloud.artifacts: write and view template {style.animated: true}
+  }
+}

@@ -1,12 +1,29 @@
-version: '3'
+version: "3"
 
 tasks:
-  validate:
+  src:pre:
+    desc: install skills-ref
+    cmds:
+      - |
+        python -m venv .venv &&
+        source .venv/bin/activate &&
+        pip install git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref
+  src:validate:
     desc: Validate the skill using skills-ref
     cmds:
-      - skills-ref validate .
+      - |
+        source .venv/bin/activate &&
+        skills-ref validate src/2025-coding-artifact
+    deps: [src:pre]
 
-  build:
+  src:build:
     desc: Zip the skill for deployment
+    deps: [src:validate]
     cmds:
-      - zip -r 2025-coding-artifact.skill SKILL.md assets scripts
+      - zip -r 2025-coding-artifact.skill src/2025-coding-artifact
+
+  docs:
+    desc: generate docs graphics
+    cmds:
+      - d2 --sketch=true --dark-theme=200 docs/architecture.d2 docs/architecture.svg
+      - d2 --sketch=true --dark-theme=200   --animate-interval=4000 docs/architecture.d2 docs/animated.svg
