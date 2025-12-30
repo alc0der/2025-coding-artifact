@@ -1,6 +1,25 @@
 # 2025 Coding Artifact: Developer Commit Heatmap Skill
 
-Generate a standalone React component for developer activity analysis. This skill guides agents to query `mergestat`, format the data, and render a Jinja2 template via Python to produce a self-contained JSX artifact.
+An educative and fun project that teaches how Claude Desktop uses [Agent Skills](https://agentskills.io).
+The project delves into effecient use of agent skills scripts. This skill guides agents to query `mergestat`, format the data, and render a Jinja2 template via Python to produce a self-contained JSX artifact, which is a fun of coding stats that can be shared to Slack.
+
+## Example below:
+
+<details>
+
+<summary>Visual Artifact</summary>
+
+![Claude Artifact](artifact.png)
+
+</details>
+
+<details>
+
+<summary>Slack Message</summary>
+
+![Slack Message](slack.png)
+
+</details>
 
 ## Features
 
